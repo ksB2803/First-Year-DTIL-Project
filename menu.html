@@ -1,0 +1,207 @@
+    <script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Explore the authentic Punjabi Tandoor menu featuring tandoori dishes, breads, drinks, and desserts. Order via Telegram!">
+    <meta name="keywords" content="Punjabi Tandoor, Indian restaurant, tandoori cuisine, Punjabi food, menu, order online">
+    <meta name="author" content="Punjabi Tandoor">
+    <title>Punjabi Tandoor Menu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-image: url('https://images.unsplash.com/photo-1606841969978-1c2f0d69ca06?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center;
+        }
+        .menu-card {
+            transition: transform 0.3s ease-in-out;
+        }
+        .menu-card:hover {
+            transform: scale(1.05);
+        }
+        #modal {
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans text-gray-800">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-orange-600 to-red-600 text-white py-6 text-center">
+        <h1 class="text-4xl md:text-5xl font-bold">Punjabi Tandoor</h1>
+        <p class="mt-2 text-lg">Authentic Punjabi Flavors, Straight from the Tandoor!</p>
+        <a href="https://t.me/PunjabiTandoorBot" target="_blank" class="mt-4 inline-block px-6 py-2 bg-white text-orange-600 rounded-lg hover:bg-gray-100" aria-label="Order via Telegram">Order via Telegram</a>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <!-- Category Filter -->
+        <div class="flex justify-center mb-8">
+            <div class="bg-white bg-opacity-80 rounded-lg shadow-lg p-4 flex flex-wrap gap-4">
+                <button class="category-btn px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600" data-category="all">All</button>
+                <button class="category-btn px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600" data-category="main">Main Course</button>
+                <button class="category-btn px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600" data-category="breads">Breads</button>
+                <button class="category-btn px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600" data-category="drinks">Drinks</button>
+                <button class="category-btn px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600" data-category="desserts">Desserts</button>
+            </div>
+        </div>
+
+        <!-- Menu Grid -->
+        <div id="menu-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+        <!-- Modal -->
+        <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden" role="dialog" aria-labelledby="modal-title" aria-hidden="true">
+            <div class="bg-white rounded-lg p-6 max-w-lg w-full">
+                <h2 id="modal-title" class="text-2xl font-bold text-orange-600"></h2>
+                <img id="modal-image" class="w-full h-48 object-cover rounded-lg mt-4" alt="" aria-hidden="true">
+                <p id="modal-description" class="mt-4 text-gray-600"></p>
+                <p id="modal-price" class="mt-2 font-semibold text-gray-800"></p>
+                <button id="close-modal" class="mt-4 px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600" aria-label="Close modal">Close</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white text-center py-4">
+        <p>© 2025 Punjabi Tandoor. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Menu data with images and descriptions
+        const menuItems = {
+            "Butter Chicken": { price: 280, category: "main", image: "https://i.ibb.co/YBqJ7rfN/butter-chicken.jpg", description: "Tender chicken cooked in a rich, creamy tomato-based gravy with butter and spices." },
+            "Paneer Tikka": { price: 240, category: "main", image: "https://i.ibb.co/qMnYtQf6/paneer-tikka.jpg ", description: "Marinated paneer cubes grilled in a tandoor, bursting with smoky flavors." },
+            "Garlic Naan": { price: 60, category: "breads", image: "https://i.ibb.co/WvSssvck/garlic-nan.jpg", description: "Soft naan topped with garlic and cilantro, baked in a tandoor." },
+            "Tandoori Chicken": { price: 300, category: "main", image: "https://i.ibb.co/ymmp1VF5/tandoori-chicken.jpg", description: "Juicy chicken marinated in yogurt and spices, roasted in a tandoor." },
+            "Chicken Biryani": { price: 250, category: "main", image: "https://i.ibb.co/n8cfSRsp/chicken-biryani.jpg", description: "Fragrant basmati rice cooked with spiced chicken and aromatic herbs." },
+            "Mutton Rogan Josh": { price: 340, category: "main", image: "https://i.ibb.co/Ldy1fRmB/mutton-rogan-josh.webp", description: "Tender mutton in a rich, spicy red curry with Kashmiri flavors." },
+            "Fish Fry": { price: 260, category: "main", image: "https://i.ibb.co/mCVXCgrf/fish-fry.jpg", description: "Crispy fried fish marinated with Punjabi spices." },
+            "Prawn Curry": { price: 320, category: "main", image: "https://i.ibb.co/LzzbZ75H/prawn-curry.jpg", description: "Succulent prawns in a spicy, tangy coconut-based curry." },
+            "Chicken Kebab": { price: 220, category: "main", image: "https://i.ibb.co/1JjMsWpn/chicken-kebab.jpg", description: "Minced chicken skewers grilled to perfection with spices." },
+            "Malai Kofta": { price: 200, category: "main", image: "https://i.ibb.co/zHs3Bq1X/malaikofta.webp", description: "Soft paneer balls in a creamy, nutty gravy." },
+            "Roti": { price: 20, category: "breads", image: "https://i.ibb.co/v6DFVWZm/roti.jpg", description: "Whole wheat flatbread cooked on a tawa." },
+            "Butter Roti": { price: 30, category: "breads", image: "https://i.ibb.co/Ps46KpvW/butter-roti.jpg", description: "Whole wheat roti brushed with butter for extra flavor." },
+            "Plain Naan": { price: 40, category: "breads", image: "https://i.ibb.co/wN9NchKw/plain-nana.jpg", description: "Soft, leavened bread baked in a tandoor." },
+            "Butter Naan": { price: 50, category: "breads", image: "https://i.ibb.co/FqqBdnz5/butter-nan.webp", description: "Naan slathered with butter, fresh from the tandoor." },
+            "Coke": { price: 50, category: "drinks", image: "https://i.ibb.co/vCJZ1FsZ/coke.jpg", description: "Chilled Coca-Cola, perfect with spicy dishes." },
+            "Pepsi": { price: 50, category: "drinks", image: "https://i.ibb.co/6R8LCfpT/pepsi.jpg", description: "Refreshing Pepsi to complement your meal." },
+            "Sprite": { price: 50, category: "drinks", image: "https://i.ibb.co/C3gqfSjs/sprite.png", description: "Crisp Sprite, a great palate cleanser." },
+            "Vanilla Ice Cream": { price: 60, category: "desserts", image: "https://i.ibb.co/1YnVP5wZ/vanillaicecream.png", description: "Creamy vanilla ice cream, a classic dessert." },
+            "Chocolate Ice Cream": { price: 70, category: "desserts", image: "https://i.ibb.co/mr1gX4Zb/chocolate.webp", description: "Rich chocolate ice cream for sweet indulgence." },
+            "Strawberry Ice Cream": { price: 70, category: "desserts", image: "https://i.ibb.co/m5mFyYqd/Strawberry-Rose-Cones-Down-v2.jpg", description: "Sweet and tangy strawberry ice cream." },
+            "Mango Ice Cream": { price: 80, category: "desserts", image: "https://i.ibb.co/9k1bRGfs/mango.png", description: "Tropical mango-flavored ice cream." },
+            "Butterscotch Ice Cream": { price: 80, category: "desserts", image: "https://i.ibb.co/qF4TwNqz/butterscotch.webp", description: "Crunchy butterscotch ice cream with caramel swirls." },
+            "Black Currant Ice Cream": { price: 80, category: "desserts", image: "https://i.ibb.co/ymb9Jvrh/black-current.webp", description: "Tangy black currant ice cream, a unique treat." },
+            "Kesar Pista Ice Cream": { price: 90, category: "desserts", image: "https://i.ibb.co/jZybX6Td/kesar-pista-icecrem.webp", description: "Saffron-infused ice cream with pistachio nuts." },
+            "Cookies n Cream": { price: 100, category: "desserts", image: "https://i.ibb.co/F4fJT9wc/Cookies-and-Cream-Ice-Cream-4.jpg", description: "Creamy ice cream with crunchy cookie bits." },
+            "Coffee Ice Cream": { price: 90, category: "desserts", image: "https://i.ibb.co/B2K4mbHL/cofeeice-cream.jpg", description: "Bold coffee-flavored ice cream for coffee lovers." },
+            "Gulkand Ice Cream": { price: 90, category: "desserts", image: "https://i.ibb.co/Fq8k6B4S/gulkand-ice-cream.jpg", description: "Rose petal-infused ice cream, a traditional delight." }
+        };
+
+        // Placeholder image for fallback
+        const placeholderImage = "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398";
+
+        // Function to render menu items
+        function renderMenu(category = "all") {
+            const menuGrid = document.getElementById("menu-grid");
+            menuGrid.innerHTML = ""; // Clear existing items
+
+            Object.entries(menuItems).forEach(([item, { price, category: itemCategory, image }]) => {
+                if (category === "all" || category === itemCategory) {
+                    const card = document.createElement("div");
+                    card.className = "menu-card bg-white bg-opacity-80 rounded-lg shadow-lg p-4 flex flex-col items-center cursor-pointer";
+                    card.setAttribute("data-item", item);
+                    card.setAttribute("role", "button");
+                    card.setAttribute("aria-label", `View details for ${item}`);
+                    card.innerHTML = `
+                        <img src="${image || placeholderImage}" alt="${item}" class="w-full h-32 object-cover rounded-lg mb-2" onerror="this.src='${placeholderImage}'">
+                        <h3 class="text-xl font-semibold text-orange-600">${item}</h3>
+                        <p class="text-gray-600">₹${price}</p>
+                    `;
+                    card.addEventListener("click", () => showModal(item));
+                    menuGrid.appendChild(card);
+                }
+            });
+        }
+
+        // Function to show modal
+        function showModal(item) {
+            const { price, image, description } = menuItems[item];
+            document.getElementById("modal-title").textContent = item;
+            document.getElementById("modal-image").src = image || placeholderImage;
+            document.getElementById("modal-image").alt = item;
+            document.getElementById("modal-description").textContent = description;
+            document.getElementById("modal-price").textContent = `Price: ₹${price}`;
+            document.getElementById("modal").classList.remove("hidden");
+            document.getElementById("modal").setAttribute("aria-hidden", "false");
+            document.getElementById("close-modal").focus();
+        }
+
+        // Function to close modal
+        function closeModal() {
+            document.getElementById("modal").classList.add("hidden");
+            document.getElementById("modal").setAttribute("aria-hidden", "true");
+        }
+
+        // Initial render
+        renderMenu();
+
+        // Category filter event listeners
+        document.querySelectorAll(".category-btn").forEach(button => {
+            button.addEventListener("click", () => {
+                const category = button.getAttribute("data-category");
+                renderMenu(category);
+            });
+        });
+
+        // Modal close event listeners
+        document.getElementById("close-modal").addEventListener("click", closeModal);
+        document.getElementById("modal").addEventListener("click", (e) => {
+            if (e.target === document.getElementById("modal")) closeModal();
+        });
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && !document.getElementById("modal").classList.contains("hidden")) closeModal();
+        });
+    </script>
+</body>
+</html>
